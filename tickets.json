@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "tickets": [
+    {
+      "id": 1,
+      "date": "30/10/2026",
+      "time": "22:57:30",
+      "lines": [
+        {
+          "id": "2605cd89-6f23-4cd5-b03f-a200f99b6d14",
+          "concept": "Llaves",
+          "unitPrice": 2.5,
+          "units": 3
+        },
+        {
+          "id": "2073e606-0976-4c3d-8e46-ea6b7efc2407",
+          "concept": "Tapas",
+          "unitPrice": 2,
+          "units": 4
+        }
+      ],
+      "ivaRate": 21,
+      "subtotal": 15.5,
+      "ivaAmount": 3.255,
+      "total": 18.755
+    }
+  ]
+}
