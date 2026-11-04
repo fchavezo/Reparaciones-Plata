@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTicketStore } from '../../hooks/useTicketStore';
-import { ChevronLeftIcon, CloseIcon, FileIcon, HistoryIcon, ReceiptIcon, SwapIcon } from './icons';
+import { ChevronLeftIcon, CloseIcon, FileIcon, HistoryIcon, PrinterIcon, ReceiptIcon, SwapIcon } from './icons';
 import './Sidebar.css';
 
 interface SidebarProps {
@@ -56,6 +56,15 @@ export function Sidebar({ collapsed, mobileOpen, onToggleCollapsed, onCloseMobil
           <HistoryIcon />
           <span className="sidebar-label">Historial</span>
           {status === 'ready' && <span className="nav-badge">{tickets.length}</span>}
+        </NavLink>
+        <NavLink
+          to="/impresora"
+          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+          title={collapsed ? 'Impresora' : undefined}
+          onClick={onCloseMobile}
+        >
+          <PrinterIcon />
+          <span className="sidebar-label">Impresora</span>
         </NavLink>
       </nav>
 

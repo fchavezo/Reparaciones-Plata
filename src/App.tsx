@@ -6,6 +6,7 @@ import { FileSetup } from './components/TicketStore/FileSetup';
 import HomePage from './pages/HomePage';
 import { HistoryPage } from './pages/HistoryPage';
 import { TicketDetailPage } from './pages/TicketDetailPage';
+import { PrintSettingsPage } from './pages/PrintSettingsPage';
 import { useTicketStore } from './hooks/useTicketStore';
 import { createEmptyDraft } from './types/ticket';
 import type { TicketDraft } from './types/ticket';
@@ -43,6 +44,7 @@ function RouterContent() {
           <Route path="/" element={<HomePage draft={draft} onDraftChange={setDraft} />} />
           <Route path="/historial" element={<HistoryPage tickets={tickets} />} />
           <Route path="/ticket/:id" element={<TicketDetailInner />} />
+          <Route path="/impresora" element={<PrintSettingsPage />} />
         </Routes>
       ) : (
         <FileSetup />

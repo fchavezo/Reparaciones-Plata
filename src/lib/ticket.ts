@@ -1,4 +1,9 @@
 import { formatTicketNumber, type Ticket, type CompanyConfig } from '../types/ticket';
+import { getPrintSettings, type PrintSettings } from './printSettings';
+
+// Consolas has thicker strokes than Courier New, whose thin lines fade on the Windows driver.
+// Courier New stays as the fallback: the ticket layout must also fit with its wider characters.
+const TICKET_FONT = "Consolas, 'Courier New', monospace";
 
 export function getCompanyConfig(): CompanyConfig {
   return {
@@ -13,7 +18,7 @@ export function getCompanyConfig(): CompanyConfig {
 // print garbage, so the company name is printed as a black-and-white image instead of text.
 function renderTextAsImage(text: string, fontSizePx: number): string | null {
   const scale = 3; // draw at a higher resolution so it stays sharp on the printer
-  const font = `bold ${fontSizePx * scale}px 'Courier New', monospace`;
+  const font = `bold ${fontSizePx * scale}px ${TICKET_FONT}`;
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
@@ -42,21 +47,36 @@ function renderTextAsImage(text: string, fontSizePx: number): string | null {
   return `<img class="company-name-img" src="${canvas.toDataURL('image/png')}" width="${canvas.width / scale}" alt="${text}">`;
 }
 
-// The POS-58 driver on macOS drops the first band of every print job, so the ticket starts
-// with blank space to keep the company name out of it.
-const PRINT_TOP_MARGIN_MM = 8;
+// Page box shared by the ticket and the test print: the content is only as wide as the area
+// the printer driver actually prints, so nothing is cut off on narrower paper.
+function pageStyles({ contentWidthMm, leftMarginMm, topMarginMm }: PrintSettings): string {
+  return `
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: ${TICKET_FONT};
+      font-size: 12px;
+      width: ${contentWidthMm}mm;
+      color: #000;
+      padding: 2mm;
+    }
+    @media print {
+      body { width: ${contentWidthMm}mm; padding: ${topMarginMm}mm 0 0 ${leftMarginMm}mm; box-sizing: content-box; }
+      @page { margin: 0; size: auto; }
+    }`;
+}
 
-export function generateTicketPrintHTML(ticket: Ticket): string {
+export function generateTicketPrintHTML(ticket: Ticket, settings: PrintSettings = getPrintSettings()): string {
   const config = getCompanyConfig();
   const companyName = config.name.toUpperCase();
-  const companyNameHTML = renderTextAsImage(companyName, 14) ?? companyName;
+  const companyNameHTML = renderTextAsImage(companyName, 15) ?? companyName;
 
   const linesHTML = ticket.lines
     .map(
       (line) => `<tr>
-  <td class="line-concept">${line.concept || '(Sin concepto)'}</td>
-  <td class="line-qty">${parseFloat(line.units.toFixed(2)).toLocaleString('es-ES')}</td>
-  <td class="line-price">${line.unitPrice.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+  <td class="line-concept" colspan="2">${line.concept || '(Sin concepto)'}</td>
+</tr>
+<tr>
+  <td class="line-qty-price">${parseFloat(line.units.toFixed(2)).toLocaleString('es-ES')} x ${line.unitPrice.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
   <td class="line-total">${(line.unitPrice * line.units).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
 </tr>`
     )
@@ -68,37 +88,25 @@ export function generateTicketPrintHTML(ticket: Ticket): string {
   <meta charset="UTF-8">
   <title>Ticket #${ticket.id}</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Courier New', monospace;
-      font-size: 11px;
-      width: 58mm;
-      color: #000;
-      padding: 2mm;
-    }
+    ${pageStyles(settings)}
     .company-header { text-align: center; margin-bottom: 3mm; }
     .company-name { font-size: 14px; font-weight: bold; margin-bottom: 1mm; }
     .company-name-img { display: block; max-width: 100%; height: auto; margin: 0 auto; }
-    .company-detail { font-size: 9px; margin-bottom: 0.5mm; }
+    .company-detail { font-size: 11px; margin-bottom: 0.5mm; }
     .divider { border-top: 1px dashed #000; margin: 2mm 0; }
-    .ticket-info { text-align: center; font-size: 10px; margin-bottom: 2mm; }
-    .ticket-title { font-size: 12px; font-weight: bold; margin-bottom: 1mm; }
+    .ticket-info { text-align: center; font-size: 12px; margin-bottom: 2mm; }
+    .ticket-title { font-size: 13px; font-weight: bold; margin-bottom: 1mm; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 2mm; }
-    th { text-align: left; font-size: 9px; padding: 1mm 0; border-bottom: 1px solid #000; }
-    td { padding: 0.5mm 0; font-size: 10px; }
-    .line-concept { text-align: left; }
-    .line-qty { text-align: right; padding-right: 4mm; }
-    .line-price { text-align: right; padding-right: 4mm; }
-    .line-total { text-align: right; }
-    th.line-qty, th.line-price, th.line-total { text-align: right; }
-    .totals { margin-top: 1mm; font-size: 10px; }
+    th { text-align: left; font-size: 11px; padding: 1mm 0; border-bottom: 1px solid #000; }
+    td { font-size: 12px; }
+    .line-concept { text-align: left; word-break: break-word; padding-top: 1mm; }
+    .line-qty-price { text-align: left; padding-bottom: 1mm; }
+    .line-total { text-align: right; white-space: nowrap; padding-left: 2mm; padding-bottom: 1mm; }
+    th.line-total { padding-bottom: 1mm; }
+    .totals { margin-top: 1mm; font-size: 12px; }
     .totals-row { display: flex; justify-content: space-between; padding: 0.5mm 0; }
     .totals-row.final { font-size: 13px; font-weight: bold; margin-top: 2mm; border-top: 1px solid #000; padding-top: 1mm; }
-    .footer { text-align: center; font-size: 9px; margin-top: 3mm; }
-    @media print {
-      body { width: 58mm; padding: ${PRINT_TOP_MARGIN_MM}mm 0 0; }
-      @page { margin: 0; size: auto; }
-    }
+    .footer { text-align: center; font-size: 11px; margin-top: 3mm; }
   </style>
 </head>
 <body>
@@ -111,12 +119,13 @@ export function generateTicketPrintHTML(ticket: Ticket): string {
   <div class="divider"></div>
   <div class="ticket-info">
     <div class="ticket-title">FACTURA SIMPLIFICADA</div>
-    <div>Nº Ticket: ${formatTicketNumber(ticket.id)} | Fecha: ${ticket.date} ${ticket.time}</div>
+    <div>Nº Ticket: ${formatTicketNumber(ticket.id)}</div>
+    <div>${ticket.date} ${ticket.time}</div>
   </div>
   <div class="divider"></div>
   <table>
     <thead>
-      <tr><th class="line-concept">Concepto</th><th class="line-qty">Cant.</th><th class="line-price">P.Unit.</th><th class="line-total">Importe</th></tr>
+      <tr><th class="line-qty-price">Cant. x Precio</th><th class="line-total">Importe</th></tr>
     </thead>
     <tbody>${linesHTML}</tbody>
   </table>
@@ -135,8 +144,48 @@ export function generateTicketPrintHTML(ticket: Ticket): string {
 </html>`;
 }
 
+// Calibration ticket: a box as wide as the configured area with a mark every 5 mm, so it is
+// easy to see whether the edges are cut off or there is room to spare.
+export function generatePrintTestHTML(settings: PrintSettings): string {
+  const marks = Array.from({ length: Math.floor(settings.contentWidthMm / 5) }, (_, i) => {
+    const mm = (i + 1) * 5;
+    return `<div class="mark" style="left:${mm}mm"><span>${mm}</span></div>`;
+  }).join('');
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Prueba de impresión</title>
+  <style>
+    ${pageStyles(settings)}
+    body { font-size: 10px; text-align: center; }
+    .box { border: 1px solid #000; padding: 2mm 1mm; margin-bottom: 3mm; }
+    .ruler { position: relative; height: 8mm; border-bottom: 1px solid #000; margin: 0 -1mm; }
+    .mark { position: absolute; bottom: 0; width: 0; height: 3mm; border-left: 1px solid #000; }
+    .mark span { position: absolute; bottom: 3.5mm; left: -3mm; width: 6mm; font-size: 7px; }
+    .title { font-size: 12px; font-weight: bold; margin-bottom: 2mm; }
+    p { margin-bottom: 1mm; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="title">PRUEBA DE IMPRESIÓN</div>
+    <p>Ancho: ${settings.contentWidthMm} mm</p>
+    <p>Margen izq.: ${settings.leftMarginMm} mm · sup.: ${settings.topMarginMm} mm</p>
+    <div class="ruler">${marks}</div>
+  </div>
+  <p>Deben verse los 4 bordes del recuadro.</p>
+  <p>Si falta el borde derecho, reduce el ancho.</p>
+</body>
+</html>`;
+}
+
 export function printTicket(ticket: Ticket): void {
-  const html = generateTicketPrintHTML(ticket);
+  printHTML(generateTicketPrintHTML(ticket));
+}
+
+export function printHTML(html: string): void {
   const printWindow = window.open('', '_blank');
   if (printWindow) {
     printWindow.document.write(html);

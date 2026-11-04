@@ -87,5 +87,7 @@ public/
 ## Notas sobre la impresora térmica
 
 - El nombre de la empresa se imprime como **imagen en blanco y negro** porque algunos controladores sustituyen el texto grande en negrita por las fuentes internas de la impresora y salen caracteres erróneos.
-- El controlador POS-58 de macOS pierde la primera franja de cada impresión, por eso el ticket empieza con un margen superior de 8 mm (`PRINT_TOP_MARGIN_MM` en `src/lib/ticket.ts`).
+- El ancho de impresión y los márgenes se ajustan en la sección **Impresora** de la aplicación (se guardan en cada ordenador) y se pueden comprobar con *Imprimir prueba*. Valores por defecto en `src/lib/printSettings.ts`:
+  - **Windows**: 46 mm de ancho. El controlador POS-58 solo imprime la zona central de ~48 mm y corta lo que sobresale, y así también cabe en rollos de 55 mm.
+  - **macOS**: 58 mm de ancho y 8 mm de margen superior, porque el controlador pierde la primera franja de cada impresión.
 - Los datos de la empresa (nombre, NIF, dirección y teléfono) se configuran en `getCompanyConfig()` de `src/lib/ticket.ts`.
